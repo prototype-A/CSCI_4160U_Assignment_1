@@ -1,35 +1,36 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
+
+[RequireComponent(typeof(CharacterController2D))]
 public class PlayerController : MonoBehaviour {
-    public float movementSpeed = 5.0f;
-    public float jumpForce = 300.0f;
-
-    private Rigidbody2D rigidBody;
-    private bool isGrounded = true;
+    public float runSpeed = 5.0f;
+    private float horizontalMovement = 0.0f;
+    
+    private CharacterController2D controller;
+    private Animator animator;
+    private bool jumping = false;
 
     private void Start() {
-        rigidBody = GetComponent<Rigidbody2D>();
+        controller = GetComponent<CharacterController2D>();
+        animator = GetComponent<Animator>();
     }
 
     private void Update() {
-        float movementX = Input.GetAxis("Horizontal") * movementSpeed * Time.deltaTime;
+        horizontalMovement = Input.GetAxis("Horizontal") * runSpeed;
 
-        // Player Jump
         if (Input.GetButtonDown("Jump")) {
-            if (isGrounded) {
-                isGrounded = false;
-                rigidBody.AddForce(transform.up * jumpForce);
-            }
+            //Debug.Log("Jumped");
+            jumping = true;
         }
 
-        // Player hits ground
-        if (rigidBody.velocity[1] == 0) {
-            isGrounded = true;
-        } else {
-            isGrounded = false;
-        }
+        animator.SetFloat("Speed", controller.speed);
+        animator.SetBool("Jumping", !controller.isGrounded);
+    }
 
-        transform.Translate(new Vector3(movementX, 0.0f, 0.0f));
+    void FixedUpdate() {
+        controller.Move(horizontalMovement, false, jumping);
+        jumping = false;
     }
 }
