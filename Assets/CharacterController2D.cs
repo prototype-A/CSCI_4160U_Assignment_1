@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Tilemaps;
 
 public class CharacterController2D : MonoBehaviour {
 
@@ -19,6 +20,10 @@ public class CharacterController2D : MonoBehaviour {
     [SerializeField] private Collider2D colliderToDisableOnCrouch;
     [SerializeField] private Transform ceilingPosition;
     [Range(0, 1)] [SerializeField] private float crouchSpeedMultiplier = .4f;
+
+    [Header("Climbing")]
+    [SerializeField] private Tilemap ladderTilemap;
+    [SerializeField] private float climbSpeed = 2.0f;
 
     private bool isFacingRight = true;
 
@@ -71,7 +76,7 @@ public class CharacterController2D : MonoBehaviour {
     }
 
 
-    public void Move(float move, bool crouch, bool jump) {
+    public void Move(float hMovement, float vMovement, bool crouch, bool jump) {
         if (!crouch) {
             if (Physics2D.OverlapCircle(ceilingPosition.position, ceilingRadius, groundLayers)) {
                 // the player cannot currently stand up
@@ -89,7 +94,7 @@ public class CharacterController2D : MonoBehaviour {
                 }
 
                 // move more slowly when crouched
-                move *= crouchSpeedMultiplier;
+                hMovement *= crouchSpeedMultiplier;
 
                 // when crouching, disable the upper collider
                 if (colliderToDisableOnCrouch != null) {
@@ -109,7 +114,22 @@ public class CharacterController2D : MonoBehaviour {
             }
 
             // what speed do we want to travel?
-            Vector3 targetVelocity = new Vector2(move * movementSpeed, GetComponent<Rigidbody2D>().velocity.y);
+            //Vector3 targetVelocity = new Vector2(hMovement * movementSpeed, GetComponent<Rigidbody2D>().velocity.y);
+            Vector3 targetVelocity;
+            Vector3Int currTilemapPosition = new Vector3Int(Mathf.FloorToInt(transform.position.x), Mathf.FloorToInt(transform.position.y), 0);
+            if (ladderTilemap.HasTile(currTilemapPosition) || ladderTilemap.HasTile(currTilemapPosition + new Vector3Int(0, -1, 0))) {
+                // Disable edge collider acting as platform at top of ladder when player wants to climb through up/down
+                if (vMovement != 0.0f) {
+                    ladderTilemap.GetComponent<EdgeCollider2D>().enabled = false;
+                }
+
+                // Climbing ladder
+                targetVelocity = new Vector2(hMovement * movementSpeed, vMovement * climbSpeed);
+            } else {
+                // Moving
+                ladderTilemap.GetComponent<EdgeCollider2D>().enabled = true;
+                targetVelocity = new Vector2(hMovement * movementSpeed, GetComponent<Rigidbody2D>().velocity.y);
+            }
 
             // apply smoothing to the speed
             rigidBody.velocity = Vector3.SmoothDamp(rigidBody.velocity, targetVelocity, ref velocity, movementSmoothing);
@@ -117,10 +137,10 @@ public class CharacterController2D : MonoBehaviour {
             // export the speed
             speed = rigidBody.velocity.magnitude;
 
-            if (move > 0 && !isFacingRight) {
+            if (hMovement > 0 && !isFacingRight) {
                 // flip the sprite horizontally when travelling left
                 Flip();
-            } else if (move < 0 && isFacingRight) {
+            } else if (hMovement < 0 && isFacingRight) {
                 // flip the sprite horizontally when travelling left
                 Flip();
             }
